@@ -1,0 +1,12 @@
+{
+    "featureScale": 369.8429870605469,
+    "gain": 0.4950000047683716,
+    "heightScale": 18.75,
+    "lacunarity": 2.2290000915527344,
+    "octaves": 12,
+    "ridgedWeight": 1.5210000276565552,
+    "warpAmplitude": 50.0,
+    "warpEnabled": true,
+    "warpFeatureScale": 200.0,
+    "weightedStrength": 0.0
+}

@@ -1,0 +1,16 @@
+{
+    "billowFeatureScale": 713.676025390625,
+    "billowWeight": 0.3330000042915344,
+    "featureScale": 100.0,
+    "gain": 0.2840000092983246,
+    "heightScale": 8.824000358581543,
+    "lacunarity": 2.509999990463257,
+    "octaves": 12,
+    "ridgedMultiWeight": 1.0099999904632568,
+    "ridgedWeight": 0.3919999897480011,
+    "warpAmplitude": 50.0,
+    "warpEnabled": false,
+    "warpFeatureScale": 200.0,
+    "warpRecursiveAmplitude": 0.0,
+    "weightedStrength": 0.0
+}

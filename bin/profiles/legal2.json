@@ -1,0 +1,14 @@
+{
+    "featureScale": 500.0,
+    "gain": 0.421999990940094,
+    "heightScale": 27.451000213623047,
+    "lacunarity": 2.86299991607666,
+    "octaves": 12,
+    "ridgedMultiWeight": 2.0,
+    "ridgedWeight": 0.8629999756813049,
+    "warpAmplitude": 67.64700317382813,
+    "warpEnabled": true,
+    "warpFeatureScale": 325.4410095214844,
+    "warpRecursiveAmplitude": 51.96099853515625,
+    "weightedStrength": 0.0
+}
