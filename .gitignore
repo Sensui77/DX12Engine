@@ -9,6 +9,10 @@
 .env.local
 *.env.*
 
+# Editors
+.vscode/
+.idea/
+
 # Dependencies
 node_modules/
 .venv/
@@ -21,29 +25,21 @@ build/
 target/
 .gradle/
 
-# Editors
-.vscode/
-.idea/
-
-# System
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Compiled files
-*.pyc
-*.class
-*.o
-*.exe
-*.dll
-*.so
-*.a
-*.obj
-*.out
-
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
 
 # Compressed files
 *.zip
