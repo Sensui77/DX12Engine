@@ -92,6 +92,127 @@ O código atual trata o Billow como um "aditivo de altura" genérico devido à s
 
 ---
 
+## 🎨 Geração de Ruído: Abordagem Simplista vs. Criativa
+
+### O Problema da Soma Linear
+
+A implementação atual trata o ruído como ingredientes de um bolo: basta misturar tudo. Na realidade, a geração procedural profissional trata o ruído como **ferramentas de escultura digital**.
+
+| Abordagem | Descrição | Resultado Visual |
+|-----------|-----------|------------------|
+| **Soma Cega (Atual)** | `Height = A + B + C` | Ruído "sujo", perda de características, Billow vira apenas offset de altura. |
+| **Composição Funcional** | `Height = Base + (Detail * Mask)` | Estruturas claras, picos apenas no topo, vales preservados. |
+| **Domain Warping** | `Height = Noise(Pos + Warp(Pos))` | Formas orgânicas, dobras tectônicas, padrões de erosão naturais. |
+
+### Por Que o Billow Falha Matematicamente?
+
+O ruído **Billow** é definido matematicamente como:
+
+```
+Billow(x, y) = |Noise(x, y)|
+```
+
+Onde `Noise(x, y)` é tipicamente Simplex ou Perlin, variando de -1 a 1.
+
+**O que acontece:**
+1. **Inversão de Vales:** Todos os valores negativos são invertidos para positivos. Um vale profundo (-0.8) vira uma colina alta (+0.8).
+2. **Perda de Informação:** A distinção entre "vale" e "colina" desaparece. O terreno perde sua estrutura natural de drenagem.
+3. **Efeito de Lavagem:** Quando somado ao FBM, o Billow preenche todos os vales, resultando em um terreno "lavado" sem profundidade.
+
+**Visualização Conceitual:**
+```
+Ruído Original:  ~~~~~~/\~~~~~~/\~~~~~~  (vales e colinas)
+Billow (Abs):    ~~~~~~/\/\~~~~~~/\/\~~~  (todos viram colinas)
+Soma com FBM:    ████████████████████████  (tudo elevado, sem definição)
+```
+
+### Técnicas Criativas Essenciais
+
+#### 1. Máscaras Seletivas
+
+Use um ruído de baixa frequência (FBM) para definir *onde* outro ruído aparece.
+
+- **Exemplo:** Aplicar `Ridged` apenas onde a altura base > 0.6.
+- **Código Conceitual:**
+  ```cpp
+  float mask = smoothstep(0.5, 0.8, baseHeight);
+  float finalHeight = baseHeight + (ridgedNoise * mask * strength);
+  ```
+
+#### 2. Domain Warping (Distorção de Domínio)
+
+Em vez de alterar a altura (eixo Y), altere as coordenadas de entrada (X, Z) antes de calcular o ruído.
+
+- **Uso do Billow:** O Billow é excelente para criar vetores de warping suaves que simulam correntes de vento ou água antiga.
+- **Código Conceitual:**
+  ```cpp
+  vec2 warp = billowNoise(x, z) * warpStrength;
+  float height = fbmNoise(x + warp.x, z + warp.y);
+  ```
+
+#### 3. Operações Booleanas e Seletivas
+
+Usar `Min`, `Max`, `Abs` e `Select` para criar formas geométricas procedurais.
+
+- `Max(FBM, Ridged)`: Cria picos isolados emergindo de uma base plana.
+- `Min(FBM, Plane)`: Cria platôs ou mesas (clipping).
+
+#### 4. Curvas de Remapeamento (Remap & Terrace)
+
+Controlar a distribuição estatística das alturas.
+
+- **Terrace:** Cria degraus naturais (socalcos) em vez de inclinas contínuas.
+- **Clamp:** Força áreas planas (fundos de lagos ou topos de montanhas).
+
+### Exemplo Comparativo de Implementação
+
+#### ❌ Antes (Soma Simples - Errado)
+
+```cpp
+// Todos competem, resultado genérico e lavado
+float altura = fbm(x, z) * 0.5f 
+             + ridged(x, z) * 0.3f 
+             + billow(x, z) * 0.2f;
+```
+
+**Problemas deste código:**
+- O Billow eleva uniformemente todo o terreno.
+- O Ridged cria picos em lugares errados (inclusive nos vales).
+- Não há controle artístico sobre onde cada feature aparece.
+
+#### ✅ Depois (Composição Criativa - Correto)
+
+```cpp
+// 1. Base do terreno (macro estrutura)
+float base = fbm(x, z);
+
+// 2. Distorcer coordenadas com Billow para criar ondulações orgânicas
+// O Billow aqui NÃO soma altura, apenas distorce o espaço
+float billowValue = billow(x * 0.5f, z * 0.5f);
+float dx = x + billowValue * 0.15f;
+float dz = z + billowValue * 0.15f;
+
+// 3. Aplicar ruído distorcido para a forma principal
+float warpedBase = fbm(dx, dz);
+
+// 4. Máscara para aplicar Ridged APENAS em altitudes altas (picos)
+// Smoothstep cria uma transição suave entre 0.6 e 0.9 de altura
+float mountainMask = smoothstep(0.6f, 0.9f, warpedBase);
+
+// 5. Adicionar detalhes de pico apenas onde a máscara permite
+float peaks = ridged(dx, dz) * mountainMask * 0.4f;
+
+// 6. Combinação Final
+float altura = warpedBase + peaks;
+```
+
+**Vantagens desta abordagem:**
+- O Billow cria ondulações naturais sem destruir vales.
+- O Ridged só aparece nos topos das montanhas, criando picos realistas.
+- Controle artístico total através das máscaras.
+
+---
+
 ## 🔍 Comparativo Rápido
 
 | Ruído | Natureza Matemática | Uso Ideal | Problema na Soma Direta |

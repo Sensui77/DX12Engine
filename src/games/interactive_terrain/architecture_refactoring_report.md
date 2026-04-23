@@ -316,6 +316,101 @@ thread_local TerrainGenerator terrainGenerator;  // ← Estado global por thread
 
 ---
 
+## 🎮 Estudo de Caso: Como Jogos AAA (Valheim) Fazem Terrenos Jogáveis
+
+Uma dúvida comum é: *"Como Valheim cria montanhas que não são apenas picos pontudos, mas possuem arenas planas no topo e encostas escaláveis?"*
+
+A resposta é: **O ruído sozinho não faz isso.** O ruído é apenas a matéria-prima bruta. Jogos profissionais aplicam uma pipeline de **pós-processamento geométrico** sobre o ruído.
+
+### 3.1. O Problema do Ruído Puro
+
+Se você gerar uma montanha apenas com `Ridged Multifractal`, o resultado será matematicamente perfeito, mas injogável:
+- Picos infinitamente finos (impossível de pisar).
+- Encostas com inclinação > 80° (o personagem escorrega).
+- Nenhuma área plana natural para construir bases ou arenas de chefes.
+
+### 3.2. A Pipeline de "Escultura Procedural" (Técnicas Reais)
+
+#### A. Criação de "Arenas" no Topo (Plateau Forcing)
+Para garantir que os topos das montanhas tenham áreas planas suficientes para combate ou construção:
+1. **Detecção de Picos:** Identificar regiões onde a altura é localmente máxima e a curvatura é alta.
+2. **Achamento Procedural:** Aplicar uma função de suavização que "corta" o topo.
+   - *Técnica:* Usar uma máscara baseada na derivada segunda (curvatura). Onde a curvatura for muito alta (pico agudo), interpolar a altura para uma média local.
+   - *Resultado:* O pico vira um platô irregular, mantendo a aparência natural mas sendo funcional.
+
+#### B. Suavização de Encostas (Slope Clamping)
+Para garantir que o jogador consiga subir a montanha sem ficar preso em paredes verticais:
+1. **Cálculo de Inclinação (Slope):** Calcular o gradiente normal em cada vértice.
+2. **Clamp de Inclinação:** Definir um ângulo máximo escalável (ex: 45°).
+   - Se `slope > max_slope`, reduzir a diferença de altura entre o vértice atual e seus vizinhos.
+   - Isso "deita" a encosta, criando caminhos em ziguezague naturais ou rampas suaves.
+3. **Iteração:** Esse processo é repetido algumas vezes (como uma simulação de relaxamento) até que toda a montanha esteja dentro do limite escalável.
+
+#### C. Erosão Hidráulica Simulada
+Para remover o aspecto "artificial" do ruído e criar vales reais:
+- Simular gotas de chuva virtuais que descem o terreno, carregando sedimento.
+- Onde a água acelera, ela escava (cria vales).
+- Onde a água desacelera (base da montanha), ela deposita sedimento (cria colinas suaves).
+- Isso conecta naturalmente os picos aos vales, eliminando descontinuidades.
+
+**Detalhe Importante:** Existem dois tipos de erosão usados em conjunto:
+
+1. **Erosão Hidráulica (Hydraulic Erosion):**
+   - Simula o fluxo de água sobre o terreno.
+   - Cria **vales em forma de V**, rios e redes de drenagem.
+   - Responsável por esculpir canais profundos e deltas.
+   - Algoritmo típico: "Particle-based erosion" com centenas de gotas virtuais.
+
+2. **Erosão Térmica (Thermal Erosion):**
+   - Simula o deslizamento de terra devido à gravidade.
+   - Cria **encostas suavizadas** e taludes naturais.
+   - Responsável por garantir que nenhuma inclinação exceda o "ângulo de repouso" do material (ex: 35° para solo, 45° para rocha).
+   - Algoritmo típico: Iterar sobre vértices vizinhos e redistribuir altura se o slope for muito íngreme.
+
+```cpp
+// Exemplo simplificado de Thermal Erosion
+void ApplyThermalErosion(Heightmap& map, float minSlope, int iterations) {
+    for (int i = 0; i < iterations; i++) {
+        for (each vertex v in map) {
+            for (each neighbor n of v) {
+                float slope = CalculateSlope(v, n);
+                if (slope > minSlope) {
+                    // Move terra do vértice mais alto para o mais baixo
+                    float transfer = (slope - minSlope) * 0.5f;
+                    v.height -= transfer;
+                    n.height += transfer;
+                }
+            }
+        }
+    }
+}
+```
+
+**Valheim usa ambos:** A erosão hidráulica cria os vales principais, e a erosão térmica suaviza as encostas para garantir jogabilidade.
+
+#### D. Regras de Bioma Baseadas em Inclinação e Altura
+Valheim não usa apenas altura para decidir onde colocar neve ou grama.
+- **Regra Simples:** `if (height > snowLine) -> Snow`
+- **Regra Avançada (Valheim):**
+  ```cpp
+  if (height > snowLine AND slope < 30 degrees) -> Snow (acumula)
+  if (height > snowLine AND slope > 60 degrees) -> Rock (neve escorrega)
+  if (slope > 70 degrees) -> Cliff (sem vegetação)
+  ```
+- Isso evita que neve cubra paredes verticais de forma irrealista e garante que as "arenas" no topo sejam cobertas de neve jogável.
+
+### 3.3. Resumo da Pipeline Profissional
+
+| Etapa | Entrada | Saída | Objetivo |
+|-------|---------|-------|----------|
+| **1. Ruído Base** | Seed, FBM, Ridged | Heightmap Bruto | Forma macroscópica (continentes). |
+| **2. Domain Warp** | Heightmap Bruto | Heightmap Distorcido | Quebrar padrões repetitivos, criar orgânico. |
+| **3. Erosão** | Heightmap Distorcido | Heightmap Erodid | Criar rios, vales e deposição realista. |
+| **4. Esculpimento** | Heightmap Erodid | Heightmap Jogável | Achatar topos (arenas), suavizar encostas (escalada). |
+| **5. Texturização** | Heightmap + Slope | Splatmap | Decidir grama/rocha/neve baseado em regras complexas. |
+
+---
+
 ## 🔧 Plano de Refatoração Prioritário
 
 ### Fase 1: Correções Críticas (1-2 semanas)
